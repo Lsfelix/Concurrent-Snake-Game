@@ -5,76 +5,119 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"time"
+
+	term "github.com/nsf/termbox-go"
 )
 
-type Pair struct {
-	a, b interface{}
-}
+const SIZE int = 20
 
-const cycle int = 1
+var field [SIZE][SIZE]string
 
-const size int = 20
+const PLAYERS int = 2
 
-var field [size][size]string
+func treatInput(inputs chan<- rune) {
+	term.Init()
+	defer term.Close()
 
-const players int = 2
-
-func snakeInput(id int, up string, down string, left string, right string, inputs <-chan string) {
-
-}
-
-func snakeController(id int) {
-	head := Pair{5, 5}
-	field[head.a.(int)][head.b.(int)] = strconv.Itoa(id)
-	//var body [5]Pair
-	direction := 3
 	for {
-		switch direction {
-		case 3:
-			head.a = head.a.(int) - 1
-			field[head.a.(int)][head.b.(int)] = strconv.Itoa(id)
-			//for index := 0; index < len(body); index++ {
-			//	if body[index].a != 0 {
-			//		body[index].a = body[index].a.(int) - 1
-			//		field[body[index].a.(int)][body[index].b.(int)] = strconv.Itoa(id)
-			//	}
-			//}
+		switch ev := term.PollEvent(); ev.Type {
+		case term.EventKey:
+			switch ev.Key {
 
+			case term.KeyEsc:
+				os.Exit(3)
+			}
+
+			//fmt.Println(ev.Ch)
+			inputs <- ev.Ch
+
+		case term.EventError:
+			fmt.Println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+			panic(ev.Err)
 		}
 
 	}
+
+}
+
+func snakeController(id int, inputs <-chan rune) {
+	name := " " + strconv.Itoa(id) + " "
+
+	headX := 5
+	headY := 5
+
+	field[headY][headX] = name
+	//body := list.New()
+
+	for {
+		key := <-inputs
+		switch key {
+		case rune(119):
+
+			field[headY][headX] = " _ "
+
+			headY--
+
+			field[headY][headX] = name
+
+		case rune(97):
+
+			field[headY][headX] = " _ "
+
+			headX--
+
+			field[headY][headX] = name
+
+		case rune(115):
+
+			field[headY][headX] = " _ "
+
+			headY++
+
+			field[headY][headX] = name
+
+		case rune(100):
+
+			field[headY][headX] = " _ "
+
+			headX++
+
+			field[headY][headX] = name
+
+		}
+		drawGame()
+	}
+
 }
 
 func drawGame() {
-	for {
-		cmd := exec.Command("clear") //Linux example, its tested
-		cmd.Stdout = os.Stdout
-		cmd.Run()
-		for rows := 0; rows < size; rows++ {
-			for columns := 0; columns < size; columns++ {
-				if field[rows][columns] == "" {
-					field[rows][columns] = " "
-				}
-
-				fmt.Print(field[rows][columns])
+	cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+	for rows := 0; rows < SIZE; rows++ {
+		for columns := 0; columns < SIZE; columns++ {
+			if field[rows][columns] == "" {
+				field[rows][columns] = " _ "
 			}
-			fmt.Print("\n")
+
+			fmt.Print(field[rows][columns])
 		}
-		time.Sleep(time.Second * time.Duration(cycle))
+		fmt.Print("\n")
 	}
 }
 
 func sendInput(input string, inputs chan<- string) {
-	for index := 0; index < players; index++ {
+	for index := 0; index < PLAYERS; index++ {
 		inputs <- input
 	}
 }
 func main() {
-	go drawGame()
-	inputs := make(chan string)
-	go snakeInput(0, "w", "a", "s", "d", inputs)
-	go snakeController(0)
+	inputs := make(chan rune, 100)
+	go treatInput(inputs)
+
+	drawGame()
+
+	go snakeController(0, inputs)
 	for {
 
 	}
