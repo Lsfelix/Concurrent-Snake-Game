@@ -3,11 +3,18 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 	"os/exec"
 	"strconv"
+	"container/list"
+	"math/rand"
 
 	term "github.com/nsf/termbox-go"
 )
+
+type Pair struct {
+    a, b interface{}
+}
 
 const SIZE int = 20
 
@@ -40,6 +47,17 @@ func treatInput(inputs chan<- rune) {
 
 }
 
+func spawnFruit() {
+	r := rand.New(rand.NewSource(99))
+	for {
+		x := r.Intn(SIZE)
+		y := r.Intn(SIZE)
+		field[y][x] = " F "
+		time.Sleep(1 * time.Second)
+	}
+
+}
+
 func snakeController(id int, inputs <-chan rune) {
 	name := " " + strconv.Itoa(id) + " "
 
@@ -47,10 +65,20 @@ func snakeController(id int, inputs <-chan rune) {
 	headY := 5
 
 	field[headY][headX] = name
-	//body := list.New()
+	body := list.New()
+
 
 	for {
 		key := <-inputs
+		
+		if(body.Len() > 0){
+			change := body.Back()
+			field[change.Value.(Pair).a.(int)][change.Value.(Pair).b.(int)] = " _ "
+			body.Remove(change)
+			aux := Pair{headY,headX}
+			body.PushFront(aux)
+		}
+
 		switch key {
 		case rune(119):
 
@@ -58,40 +86,49 @@ func snakeController(id int, inputs <-chan rune) {
 
 			headY--
 
-			field[headY][headX] = name
 
 		case rune(97):
 
 			field[headY][headX] = " _ "
 
 			headX--
-
-			field[headY][headX] = name
+		
 
 		case rune(115):
 
 			field[headY][headX] = " _ "
 
 			headY++
-
-			field[headY][headX] = name
+			
 
 		case rune(100):
 
 			field[headY][headX] = " _ "
 
 			headX++
-
-			field[headY][headX] = name
+		
 
 		}
+
+		if field[headY][headX] == " F "{
+			point := Pair{headY,headX}
+			body.PushFront(point)
+		}
+
+		field[headY][headX] = name
+
+		for e := body.Front(); e != nil; e = e.Next() {
+			field[e.Value.(Pair).a.(int)][e.Value.(Pair).b.(int)] = name 
+		}
+
 		drawGame()
 	}
 
 }
 
 func drawGame() {
-	cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+	cmd := exec.Command("clear");//Linux
+	//cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
 	cmd.Stdout = os.Stdout
 	cmd.Run()
 	for rows := 0; rows < SIZE; rows++ {
@@ -116,7 +153,8 @@ func main() {
 	go treatInput(inputs)
 
 	drawGame()
-
+	
+	go spawnFruit()
 	go snakeController(0, inputs)
 	for {
 
